@@ -8,7 +8,7 @@ import { getPieceAt } from './game/board.js';
 import { Renderer } from './ui/renderer.js';
 import { getBestMove, getPredictedResponse } from './ai/minimax.js';
 import { SoundManager } from './ui/sound.js';
-import { generateAgathaThought, buildGameContext } from './ui/agatha-thoughts.js';
+import { generateAgathaThought, generateAgathaReply, buildGameContext } from './ui/agatha-thoughts.js';
 /**
  * Main application class
  */
@@ -16,11 +16,13 @@ class PrecogCheckers {
     constructor() {
         this._isAIThinking = false;
         this._isAnimating = false;
-        // API key for LLM (optional)
+        // API key for LLM (optional) - stored in sessionStorage
         this._apiKey = null;
         // Track last human move for context
         this._lastHumanMove = null;
-        // Track conversation context for responses
+        // Conversation history with Agatha
+        this._conversationHistory = [];
+        // Track last Agatha thought for display
         this._lastAgathaThought = '';
         // Get canvas
         this._canvas = document.getElementById('game-canvas');
@@ -45,8 +47,18 @@ class PrecogCheckers {
         this._agathaThoughts = document.getElementById('agatha-thoughts');
         this._humanResponseInput = document.getElementById('human-response');
         this._sendResponseBtn = document.getElementById('send-response');
-        // Check for API key in localStorage or prompt
-        this._apiKey = localStorage.getItem('anthropic_api_key');
+        // Settings modal elements
+        this._settingsBtn = document.getElementById('settings-btn');
+        this._settingsModal = document.getElementById('settings-modal');
+        this._settingsBackdrop = document.getElementById('settings-backdrop');
+        this._apiKeyInput = document.getElementById('api-key-input');
+        this._apiKeyStatus = document.getElementById('api-key-status');
+        this._toggleKeyVisibility = document.getElementById('toggle-key-visibility');
+        this._clearKeyBtn = document.getElementById('clear-key-btn');
+        this._saveSettingsBtn = document.getElementById('save-settings-btn');
+        // Check for API key in sessionStorage (more secure than localStorage)
+        this._apiKey = sessionStorage.getItem('anthropic_api_key');
+        this._updateApiKeyStatus();
         // Setup event listeners
         this._setupEventListeners();
         // Setup game callbacks
@@ -77,6 +89,12 @@ class PrecogCheckers {
                 this._handleSendResponse();
             }
         });
+        // Settings modal
+        this._settingsBtn.addEventListener('click', this._openSettings.bind(this));
+        this._settingsBackdrop.addEventListener('click', this._closeSettings.bind(this));
+        this._saveSettingsBtn.addEventListener('click', this._saveSettings.bind(this));
+        this._clearKeyBtn.addEventListener('click', this._clearApiKey.bind(this));
+        this._toggleKeyVisibility.addEventListener('click', this._toggleKeyVisibilityHandler.bind(this));
     }
     /**
      * Sets up game controller callbacks
@@ -261,8 +279,12 @@ class PrecogCheckers {
             this._isAIThinking = false;
             return;
         }
-        // Glow effect before moving
-        await this._renderer.startGlow(piece, ANIMATION_DURATION.GLOW);
+        // Start continuous glow - will keep glowing until thoughts are displayed
+        this._renderer.startContinuousGlow(piece);
+        // Start generating thoughts in parallel (don't await yet)
+        const thoughtsPromise = this._generateThoughts(move);
+        // Wait a moment to show the glow before moving
+        await this._delay(ANIMATION_DURATION.GLOW);
         this._isAnimating = true;
         // Build path for multi-jump or single move
         const path = this._buildJumpPath(move);
@@ -278,26 +300,33 @@ class PrecogCheckers {
         // Execute the move
         this._game.makeMove(move);
         this._isAnimating = false;
-        this._isAIThinking = false;
         this._updateDisplay();
-        // Generate Agatha's thoughts (async, don't wait)
-        this._generateAndDisplayThoughts(move);
+        // Wait for thoughts to complete, then display and stop glowing
+        const thought = await thoughtsPromise;
+        this._displayAgathaThought(thought);
+        this._renderer.stopGlow();
+        this._isAIThinking = false;
     }
     /**
-     * Generates and displays Agatha's thoughts
+     * Generates Agatha's thoughts (returns the thought string)
      */
-    async _generateAndDisplayThoughts(agathaMove) {
+    async _generateThoughts(agathaMove) {
         // Show thinking indicator
         this._setAgathaThinking(true);
         const moveNumber = Math.floor(this._game.moveHistory.length / 2);
         const context = buildGameContext(this._game.board, this._lastHumanMove, agathaMove, moveNumber);
         try {
-            const thought = await generateAgathaThought(context, this._apiKey);
-            this._displayAgathaThought(thought);
+            const thought = await generateAgathaThought(context, this._apiKey, this._conversationHistory);
+            // Add to conversation history
+            this._conversationHistory.push({
+                role: 'assistant',
+                content: thought,
+            });
+            return thought;
         }
         catch (error) {
             console.error('Error generating thought:', error);
-            this._displayAgathaThought("The visions swirl... Your fate remains sealed.");
+            return "The visions swirl... Your fate remains sealed.";
         }
     }
     /**
@@ -335,72 +364,26 @@ class PrecogCheckers {
             return;
         // Clear input
         this._humanResponseInput.value = '';
+        // Add human message to conversation history
+        this._conversationHistory.push({
+            role: 'user',
+            content: message,
+        });
         // Show thinking
         this._setAgathaThinking(true);
         // Generate Agatha's response to the human's message
         try {
-            const response = await this._generateAgathaReply(message);
+            const response = await generateAgathaReply(message, this._apiKey, this._conversationHistory);
+            // Add Agatha's response to conversation history
+            this._conversationHistory.push({
+                role: 'assistant',
+                content: response,
+            });
             this._displayAgathaThought(response);
         }
         catch (error) {
             console.error('Error generating reply:', error);
             this._displayAgathaThought("Your words ripple through time, but change nothing.");
-        }
-    }
-    /**
-     * Generates Agatha's reply to human's message
-     */
-    async _generateAgathaReply(humanMessage) {
-        if (!this._apiKey) {
-            // Local fallback responses
-            const responses = [
-                "Your words are as predictable as your moves.",
-                "I've already seen this conversation in a thousand futures.",
-                "Talk all you want. The outcome remains unchanged.",
-                "Interesting sentiment. It won't save your pieces.",
-                "Your defiance is... amusing. And futile.",
-                "I heard that same phrase in 47 alternate timelines.",
-                "Words cannot alter what I've already seen.",
-                "Such bravado. The visions show me your doubt beneath it.",
-            ];
-            return responses[Math.floor(Math.random() * responses.length)];
-        }
-        try {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': this._apiKey,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true',
-                },
-                body: JSON.stringify({
-                    model: 'claude-3-5-haiku-20241022',
-                    max_tokens: 100,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `You are Agatha, a precognitive AI from Minority Report playing checkers. You're mysterious, confident, and can see the future.
-
-Your last statement was: "${this._lastAgathaThought}"
-
-The human opponent just said to you: "${humanMessage}"
-
-Respond in 1 SHORT sentence. Stay in character - be mysterious, slightly condescending, reference your visions/precognition. Include subtle trash talk.
-
-Respond with ONLY your reply, no quotes.`,
-                        },
-                    ],
-                }),
-            });
-            if (!response.ok) {
-                throw new Error('API error');
-            }
-            const data = await response.json();
-            return data.content?.[0]?.text?.trim() || "The future remains... clouded by your insolence.";
-        }
-        catch (error) {
-            return "Your words echo through time, changing nothing.";
         }
     }
     /**
@@ -433,6 +416,7 @@ Respond with ONLY your reply, no quotes.`,
         this._isAIThinking = false;
         this._isAnimating = false;
         this._lastHumanMove = null;
+        this._conversationHistory = []; // Reset conversation history
         this._displayAgathaThought("I see all possible futures... Make your move, human.");
         this._updateDisplay();
     }
@@ -546,6 +530,79 @@ Respond with ONLY your reply, no quotes.`,
         else {
             this._statusMessage.textContent = 'Agatha is watching...';
             this._statusMessage.className = 'status-bar__message status-bar__message--thinking';
+        }
+    }
+    /**
+     * Opens the settings modal
+     */
+    _openSettings() {
+        this._settingsModal.hidden = false;
+        // Populate input if key exists (show masked version)
+        if (this._apiKey) {
+            this._apiKeyInput.value = this._apiKey;
+        }
+        this._updateApiKeyStatus();
+    }
+    /**
+     * Closes the settings modal
+     */
+    _closeSettings() {
+        this._settingsModal.hidden = true;
+        // Reset input type to password for security
+        this._apiKeyInput.type = 'password';
+        const eyeIcon = this._toggleKeyVisibility.querySelector('.eye-icon');
+        if (eyeIcon) {
+            eyeIcon.textContent = '\u{1F441}'; // Eye icon
+        }
+    }
+    /**
+     * Saves settings and closes modal
+     */
+    _saveSettings() {
+        const key = this._apiKeyInput.value.trim();
+        if (key) {
+            sessionStorage.setItem('anthropic_api_key', key);
+            this._apiKey = key;
+        }
+        this._updateApiKeyStatus();
+        this._closeSettings();
+    }
+    /**
+     * Clears the API key from storage
+     */
+    _clearApiKey() {
+        sessionStorage.removeItem('anthropic_api_key');
+        this._apiKey = null;
+        this._apiKeyInput.value = '';
+        this._updateApiKeyStatus();
+    }
+    /**
+     * Toggles visibility of the API key input
+     */
+    _toggleKeyVisibilityHandler() {
+        const isPassword = this._apiKeyInput.type === 'password';
+        this._apiKeyInput.type = isPassword ? 'text' : 'password';
+        const eyeIcon = this._toggleKeyVisibility.querySelector('.eye-icon');
+        if (eyeIcon) {
+            // Use different icons for show/hide state
+            eyeIcon.textContent = isPassword ? '\u{1F440}' : '\u{1F441}'; // Eyes vs Eye
+        }
+    }
+    /**
+     * Updates the API key status display
+     */
+    _updateApiKeyStatus() {
+        if (this._apiKey) {
+            // Show masked key (first 7 chars + ... + last 4 chars)
+            const masked = this._apiKey.length > 15
+                ? `${this._apiKey.substring(0, 10)}...${this._apiKey.substring(this._apiKey.length - 4)}`
+                : '***configured***';
+            this._apiKeyStatus.textContent = `API key configured: ${masked}`;
+            this._apiKeyStatus.classList.add('settings-section__status--active');
+        }
+        else {
+            this._apiKeyStatus.textContent = 'No API key configured - using fallback responses';
+            this._apiKeyStatus.classList.remove('settings-section__status--active');
         }
     }
     /**

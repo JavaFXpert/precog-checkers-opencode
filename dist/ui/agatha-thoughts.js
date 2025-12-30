@@ -7,13 +7,19 @@ import { positionToNotation } from '../game/board.js';
 /**
  * Generates Agatha's commentary using an LLM
  */
-export async function generateAgathaThought(context, apiKey) {
+export async function generateAgathaThought(context, apiKey, conversationHistory = []) {
     // If no API key, use local fallback
     if (!apiKey) {
         return generateLocalThought(context);
     }
     try {
-        const prompt = buildPrompt(context);
+        const systemPrompt = buildSystemPrompt();
+        const userMessage = buildGameStateMessage(context);
+        // Build messages array with conversation history
+        const messages = [
+            ...conversationHistory,
+            { role: 'user', content: userMessage },
+        ];
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
@@ -23,14 +29,10 @@ export async function generateAgathaThought(context, apiKey) {
                 'anthropic-dangerous-direct-browser-access': 'true',
             },
             body: JSON.stringify({
-                model: 'claude-3-5-haiku-20241022',
+                model: 'claude-haiku-4-5-20251001',
                 max_tokens: 150,
-                messages: [
-                    {
-                        role: 'user',
-                        content: prompt,
-                    },
-                ],
+                system: systemPrompt,
+                messages: messages,
             }),
         });
         if (!response.ok) {
@@ -47,10 +49,75 @@ export async function generateAgathaThought(context, apiKey) {
     }
 }
 /**
- * Builds the prompt for the LLM
+ * Generates Agatha's reply to a human message
  */
-function buildPrompt(context) {
-    const { humanPieces, agathaPieces, lastHumanMove, agathaMove, moveNumber, isCapture, isMultiCapture, humanKings, agathaKings, isEndgame, } = context;
+export async function generateAgathaReply(humanMessage, apiKey, conversationHistory = []) {
+    if (!apiKey) {
+        // Local fallback responses
+        const responses = [
+            "Your words are as predictable as your moves.",
+            "I've already seen this conversation in a thousand futures.",
+            "Talk all you want. The outcome remains unchanged.",
+            "Interesting sentiment. It won't save your pieces.",
+            "Your defiance is... amusing. And futile.",
+            "I heard that same phrase in 47 alternate timelines.",
+            "Words cannot alter what I've already seen.",
+            "Such bravado. The visions show me your doubt beneath it.",
+        ];
+        return responses[Math.floor(Math.random() * responses.length)];
+    }
+    try {
+        const systemPrompt = buildSystemPrompt();
+        // Build messages with history plus new human message
+        const messages = [
+            ...conversationHistory,
+            { role: 'user', content: humanMessage },
+        ];
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 100,
+                system: systemPrompt,
+                messages: messages,
+            }),
+        });
+        if (!response.ok) {
+            throw new Error('API error');
+        }
+        const data = await response.json();
+        return data.content?.[0]?.text?.trim() || "The future remains... clouded.";
+    }
+    catch (error) {
+        return "Your words echo through time, changing nothing.";
+    }
+}
+/**
+ * Builds the system prompt for Agatha
+ */
+function buildSystemPrompt() {
+    return `You are Agatha, a precognitive AI from Minority Report playing checkers against a human. You can see the future and are supremely confident.
+
+Your personality:
+- Mysterious and all-knowing, like a precog
+- Subtly condescending but not mean-spirited
+- Reference "visions", "futures", "foresight" occasionally
+- Include playful trash talk
+- Always stay in character
+
+Keep responses SHORT - 1-2 sentences maximum. Never break character.`;
+}
+/**
+ * Builds the game state message for moves
+ */
+function buildGameStateMessage(context) {
+    const { humanPieces, agathaPieces, lastHumanMove, agathaMove, moveNumber, humanKings, agathaKings, isEndgame, } = context;
     const humanMoveFrom = lastHumanMove ? positionToNotation(lastHumanMove.from) : '';
     const humanMoveTo = lastHumanMove ? positionToNotation(lastHumanMove.to) : '';
     const humanCaptured = lastHumanMove && lastHumanMove.captures.length > 0;
@@ -58,23 +125,13 @@ function buildPrompt(context) {
     const agathaMoveFrom = agathaMove ? positionToNotation(agathaMove.from) : '';
     const agathaMoveTo = agathaMove ? positionToNotation(agathaMove.to) : '';
     const agathaCaptureCount = agathaMove ? agathaMove.captures.length : 0;
-    return `You are Agatha, a precognitive AI from Minority Report playing checkers. You see the future.
+    return `[GAME UPDATE - Move #${moveNumber}]
+Human moved: ${humanMoveFrom} to ${humanMoveTo}${humanCaptured ? ` (captured ${humanCaptureCount})` : ''}
+Your response: ${agathaMoveFrom} to ${agathaMoveTo}${agathaCaptureCount > 0 ? ` (capturing ${agathaCaptureCount})` : ''}
+Score: You ${agathaPieces} (${agathaKings} kings) - Human ${humanPieces} (${humanKings} kings)
+${isEndgame ? 'ENDGAME - few pieces remain' : ''}
 
-SPECIFIC MOVES THIS TURN:
-- Human just moved their piece from ${humanMoveFrom} to ${humanMoveTo}${humanCaptured ? `, capturing ${humanCaptureCount} of your piece(s)` : ''}
-- You are responding by moving from ${agathaMoveFrom} to ${agathaMoveTo}${agathaCaptureCount > 0 ? `, capturing ${agathaCaptureCount} of their piece(s)` : ''}
-
-GAME STATE:
-- Move #${moveNumber}
-- Your pieces: ${agathaPieces} (${agathaKings} kings) | Human's pieces: ${humanPieces} (${humanKings} kings)
-- Endgame: ${isEndgame ? 'yes, few pieces left' : 'no'}
-
-Write 1-2 SHORT sentences as Agatha commenting on:
-1. The human's specific move (${humanMoveFrom} to ${humanMoveTo}) - was it good/bad/predictable?
-2. Your specific counter-move (${agathaMoveFrom} to ${agathaMoveTo}) - why it's brilliant
-
-Be mysterious, reference visions/futures, include trash talk. Mention the actual square names.
-Respond with ONLY the thought, no quotes.`;
+Comment on this move in 1-2 sentences. Reference the specific squares.`;
 }
 /**
  * Local fallback when API is unavailable

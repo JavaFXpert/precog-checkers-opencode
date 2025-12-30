@@ -163,7 +163,7 @@ export class Renderer {
   }
 
   /**
-   * Starts the glow animation for a piece
+   * Starts the glow animation for a piece (timed)
    */
   startGlow(piece: Piece, duration: number = 1000): Promise<void> {
     return new Promise(resolve => {
@@ -171,6 +171,12 @@ export class Renderer {
       this._glowStartTime = performance.now();
 
       const animate = (time: number): void => {
+        // Check if glow was stopped externally
+        if (this._glowingPiece !== piece) {
+          resolve();
+          return;
+        }
+
         const elapsed = time - this._glowStartTime;
 
         if (elapsed >= duration) {
@@ -186,6 +192,37 @@ export class Renderer {
 
       requestAnimationFrame(animate);
     });
+  }
+
+  /**
+   * Starts continuous glow animation (must call stopGlow to end)
+   */
+  startContinuousGlow(piece: Piece): void {
+    this._glowingPiece = piece;
+    this._glowStartTime = performance.now();
+    this._runContinuousGlow();
+  }
+
+  /**
+   * Runs the continuous glow animation loop
+   */
+  private _runContinuousGlow(): void {
+    const animate = (): void => {
+      if (!this._glowingPiece) {
+        return;
+      }
+      this.render();
+      requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }
+
+  /**
+   * Stops the glow animation
+   */
+  stopGlow(): void {
+    this._glowingPiece = null;
+    this.render();
   }
 
   /**

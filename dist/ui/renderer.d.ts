@@ -62,9 +62,21 @@ export declare class Renderer {
      */
     clearMoveTraces(): void;
     /**
-     * Starts the glow animation for a piece
+     * Starts the glow animation for a piece (timed)
      */
     startGlow(piece: Piece, duration?: number): Promise<void>;
+    /**
+     * Starts continuous glow animation (must call stopGlow to end)
+     */
+    startContinuousGlow(piece: Piece): void;
+    /**
+     * Runs the continuous glow animation loop
+     */
+    private _runContinuousGlow;
+    /**
+     * Stops the glow animation
+     */
+    stopGlow(): void;
     /**
      * Animates a piece moving from one position to another
      */

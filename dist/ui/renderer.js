@@ -130,13 +130,18 @@ export class Renderer {
         this._moveTraces = [];
     }
     /**
-     * Starts the glow animation for a piece
+     * Starts the glow animation for a piece (timed)
      */
     startGlow(piece, duration = 1000) {
         return new Promise(resolve => {
             this._glowingPiece = piece;
             this._glowStartTime = performance.now();
             const animate = (time) => {
+                // Check if glow was stopped externally
+                if (this._glowingPiece !== piece) {
+                    resolve();
+                    return;
+                }
                 const elapsed = time - this._glowStartTime;
                 if (elapsed >= duration) {
                     this._glowingPiece = null;
@@ -149,6 +154,34 @@ export class Renderer {
             };
             requestAnimationFrame(animate);
         });
+    }
+    /**
+     * Starts continuous glow animation (must call stopGlow to end)
+     */
+    startContinuousGlow(piece) {
+        this._glowingPiece = piece;
+        this._glowStartTime = performance.now();
+        this._runContinuousGlow();
+    }
+    /**
+     * Runs the continuous glow animation loop
+     */
+    _runContinuousGlow() {
+        const animate = () => {
+            if (!this._glowingPiece) {
+                return;
+            }
+            this.render();
+            requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+    }
+    /**
+     * Stops the glow animation
+     */
+    stopGlow() {
+        this._glowingPiece = null;
+        this.render();
     }
     /**
      * Animates a piece moving from one position to another

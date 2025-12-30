@@ -18,10 +18,19 @@ interface GameContext {
     agathaKings: number;
     isEndgame: boolean;
 }
+/** Message in conversation history */
+export interface ConversationMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
 /**
  * Generates Agatha's commentary using an LLM
  */
-export declare function generateAgathaThought(context: GameContext, apiKey: string | null): Promise<string>;
+export declare function generateAgathaThought(context: GameContext, apiKey: string | null, conversationHistory?: ConversationMessage[]): Promise<string>;
+/**
+ * Generates Agatha's reply to a human message
+ */
+export declare function generateAgathaReply(humanMessage: string, apiKey: string | null, conversationHistory?: ConversationMessage[]): Promise<string>;
 /**
  * Builds context from game state
  */

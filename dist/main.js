@@ -2,11 +2,12 @@
  * Precog Checkers - Main Entry Point
  * Initializes the game and handles user interactions
  */
-import { ANIMATION_DURATION, } from './types.js';
+import { ANIMATION_DURATION, AI_SEARCH_DEPTH, } from './types.js';
 import { GameController } from './game/game-controller.js';
 import { getPieceAt } from './game/board.js';
 import { Renderer } from './ui/renderer.js';
-import { getBestMove, getPredictedResponse } from './ai/minimax.js';
+import { getBestMove, getPredictedResponse, getNodesEvaluated } from './ai/minimax.js';
+import { getAllValidMoves } from './game/rules.js';
 import { SoundManager } from './ui/sound.js';
 import { generateAgathaThought, generateAgathaReply, buildGameContext } from './ui/agatha-thoughts.js';
 /**
@@ -267,8 +268,17 @@ class PrecogCheckers {
         this._updateStatus('Agatha is foreseeing...');
         // Small delay to show thinking state
         await this._delay(500);
+        // Count available moves before getting best move
+        const availableMoves = getAllValidMoves(this._game.board, 'agatha').length;
         // Get AI move
         const move = getBestMove(this._game.board);
+        // Capture AI metrics right after the search completes
+        const aiMetrics = {
+            positionsEvaluated: getNodesEvaluated(),
+            searchDepth: AI_SEARCH_DEPTH,
+            moveScore: 0, // We could calculate this with evaluateMove if needed
+            availableMoves: availableMoves,
+        };
         if (!move) {
             console.error('AI could not find a move');
             this._isAIThinking = false;
@@ -282,7 +292,7 @@ class PrecogCheckers {
         // Start continuous glow - will keep glowing until thoughts are displayed
         this._renderer.startContinuousGlow(piece);
         // Start generating thoughts in parallel (don't await yet)
-        const thoughtsPromise = this._generateThoughts(move);
+        const thoughtsPromise = this._generateThoughts(move, aiMetrics);
         // Wait a moment to show the glow before moving
         await this._delay(ANIMATION_DURATION.GLOW);
         this._isAnimating = true;
@@ -310,11 +320,11 @@ class PrecogCheckers {
     /**
      * Generates Agatha's thoughts (returns the thought string)
      */
-    async _generateThoughts(agathaMove) {
+    async _generateThoughts(agathaMove, aiMetrics) {
         // Show thinking indicator
         this._setAgathaThinking(true);
         const moveNumber = Math.floor(this._game.moveHistory.length / 2);
-        const context = buildGameContext(this._game.board, this._lastHumanMove, agathaMove, moveNumber);
+        const context = buildGameContext(this._game.board, this._lastHumanMove, agathaMove, moveNumber, aiMetrics);
         try {
             const thought = await generateAgathaThought(context, this._apiKey, this._conversationHistory);
             // Add to conversation history

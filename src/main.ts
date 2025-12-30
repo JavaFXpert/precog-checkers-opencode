@@ -11,13 +11,15 @@ import {
   GameStatus,
   GhostPiece,
   ANIMATION_DURATION,
+  AI_SEARCH_DEPTH,
 } from './types.js';
 import { GameController } from './game/game-controller.js';
 import { getPieceAt, formatMove } from './game/board.js';
 import { Renderer } from './ui/renderer.js';
-import { getBestMove, getPredictedResponse } from './ai/minimax.js';
+import { getBestMove, getPredictedResponse, getNodesEvaluated } from './ai/minimax.js';
+import { getAllValidMoves } from './game/rules.js';
 import { SoundManager } from './ui/sound.js';
-import { generateAgathaThought, generateAgathaReply, buildGameContext, ConversationMessage } from './ui/agatha-thoughts.js';
+import { generateAgathaThought, generateAgathaReply, buildGameContext, ConversationMessage, AIMetrics } from './ui/agatha-thoughts.js';
 
 /**
  * Main application class
@@ -371,8 +373,19 @@ class PrecogCheckers {
     // Small delay to show thinking state
     await this._delay(500);
 
+    // Count available moves before getting best move
+    const availableMoves = getAllValidMoves(this._game.board, 'agatha').length;
+
     // Get AI move
     const move = getBestMove(this._game.board);
+    
+    // Capture AI metrics right after the search completes
+    const aiMetrics: AIMetrics = {
+      positionsEvaluated: getNodesEvaluated(),
+      searchDepth: AI_SEARCH_DEPTH,
+      moveScore: 0, // We could calculate this with evaluateMove if needed
+      availableMoves: availableMoves,
+    };
 
     if (!move) {
       console.error('AI could not find a move');
@@ -390,7 +403,7 @@ class PrecogCheckers {
     this._renderer.startContinuousGlow(piece);
 
     // Start generating thoughts in parallel (don't await yet)
-    const thoughtsPromise = this._generateThoughts(move);
+    const thoughtsPromise = this._generateThoughts(move, aiMetrics);
 
     // Wait a moment to show the glow before moving
     await this._delay(ANIMATION_DURATION.GLOW);
@@ -431,7 +444,7 @@ class PrecogCheckers {
   /**
    * Generates Agatha's thoughts (returns the thought string)
    */
-  private async _generateThoughts(agathaMove: Move): Promise<string> {
+  private async _generateThoughts(agathaMove: Move, aiMetrics: AIMetrics): Promise<string> {
     // Show thinking indicator
     this._setAgathaThinking(true);
 
@@ -440,7 +453,8 @@ class PrecogCheckers {
       this._game.board,
       this._lastHumanMove,
       agathaMove,
-      moveNumber
+      moveNumber,
+      aiMetrics
     );
 
     try {

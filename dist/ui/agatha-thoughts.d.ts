@@ -4,9 +4,18 @@
  */
 import { Piece, Move } from '../types.js';
 /**
+ * AI strategy metrics from minimax search
+ */
+export interface AIMetrics {
+    positionsEvaluated: number;
+    searchDepth: number;
+    moveScore: number;
+    availableMoves: number;
+}
+/**
  * Game context for generating commentary
  */
-interface GameContext {
+export interface GameContext {
     humanPieces: number;
     agathaPieces: number;
     lastHumanMove: Move | null;
@@ -17,6 +26,7 @@ interface GameContext {
     humanKings: number;
     agathaKings: number;
     isEndgame: boolean;
+    aiMetrics: AIMetrics | null;
 }
 /** Message in conversation history */
 export interface ConversationMessage {
@@ -34,6 +44,5 @@ export declare function generateAgathaReply(humanMessage: string, apiKey: string
 /**
  * Builds context from game state
  */
-export declare function buildGameContext(board: (Piece | null)[][], lastHumanMove: Move | null, agathaMove: Move | null, moveNumber: number): GameContext;
-export {};
+export declare function buildGameContext(board: (Piece | null)[][], lastHumanMove: Move | null, agathaMove: Move | null, moveNumber: number, aiMetrics?: AIMetrics | null): GameContext;
 //# sourceMappingURL=agatha-thoughts.d.ts.map

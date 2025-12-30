@@ -7,9 +7,19 @@ import { Piece, Player, Move, Position, BOARD_SIZE } from '../types.js';
 import { positionToNotation, countPieces } from '../game/board.js';
 
 /**
+ * AI strategy metrics from minimax search
+ */
+export interface AIMetrics {
+  positionsEvaluated: number;
+  searchDepth: number;
+  moveScore: number;
+  availableMoves: number;
+}
+
+/**
  * Game context for generating commentary
  */
-interface GameContext {
+export interface GameContext {
   humanPieces: number;
   agathaPieces: number;
   lastHumanMove: Move | null;
@@ -20,6 +30,7 @@ interface GameContext {
   humanKings: number;
   agathaKings: number;
   isEndgame: boolean;
+  aiMetrics: AIMetrics | null;
 }
 
 /** Message in conversation history */
@@ -153,7 +164,19 @@ Your personality:
 - Include playful trash talk
 - Always stay in character
 
-Keep responses SHORT - 1-2 sentences maximum. Never break character.`;
+Technical knowledge (use when asked about your abilities):
+- You use the Minimax algorithm with alpha-beta pruning to search game trees
+- Your search depth is 8 moves ahead (4 complete turns for each player)
+- You evaluate thousands of board positions per move using alpha-beta pruning to skip inferior branches
+- You prioritize captures and promotions when ordering moves to improve search efficiency
+- Your evaluation function considers: piece count, king count, board control, piece advancement
+- You can predict human moves because you've simulated all possible futures
+- Alpha-beta pruning lets you skip branches that can't improve on already-found solutions
+- "Seeing the future" means you've computed the game tree and know optimal play
+
+When asked technical questions, answer accurately but maintain your mysterious precog persona. Frame algorithms as "visions" and computation as "foreseeing futures."
+
+Keep responses SHORT - 1-2 sentences maximum unless explaining technical details. Never break character.`;
 }
 
 /**
@@ -169,6 +192,7 @@ function buildGameStateMessage(context: GameContext): string {
     humanKings,
     agathaKings,
     isEndgame,
+    aiMetrics,
   } = context;
 
   const humanMoveFrom = lastHumanMove ? positionToNotation(lastHumanMove.from) : '';
@@ -180,11 +204,22 @@ function buildGameStateMessage(context: GameContext): string {
   const agathaMoveTo = agathaMove ? positionToNotation(agathaMove.to) : '';
   const agathaCaptureCount = agathaMove ? agathaMove.captures.length : 0;
 
+  // Build AI metrics section if available
+  let metricsSection = '';
+  if (aiMetrics) {
+    metricsSection = `
+[AI METRICS FOR THIS MOVE]
+- Positions evaluated: ${aiMetrics.positionsEvaluated.toLocaleString()}
+- Search depth: ${aiMetrics.searchDepth} moves ahead
+- Move score: ${aiMetrics.moveScore > 0 ? '+' : ''}${aiMetrics.moveScore}
+- Available moves considered: ${aiMetrics.availableMoves}`;
+  }
+
   return `[GAME UPDATE - Move #${moveNumber}]
 Human moved: ${humanMoveFrom} to ${humanMoveTo}${humanCaptured ? ` (captured ${humanCaptureCount})` : ''}
 Your response: ${agathaMoveFrom} to ${agathaMoveTo}${agathaCaptureCount > 0 ? ` (capturing ${agathaCaptureCount})` : ''}
 Score: You ${agathaPieces} (${agathaKings} kings) - Human ${humanPieces} (${humanKings} kings)
-${isEndgame ? 'ENDGAME - few pieces remain' : ''}
+${isEndgame ? 'ENDGAME - few pieces remain' : ''}${metricsSection}
 
 Comment on this move in 1-2 sentences. Reference the specific squares.`;
 }
@@ -270,7 +305,8 @@ export function buildGameContext(
   board: (Piece | null)[][],
   lastHumanMove: Move | null,
   agathaMove: Move | null,
-  moveNumber: number
+  moveNumber: number,
+  aiMetrics: AIMetrics | null = null
 ): GameContext {
   let humanPieces = 0;
   let agathaPieces = 0;
@@ -307,5 +343,6 @@ export function buildGameContext(
     humanKings,
     agathaKings,
     isEndgame,
+    aiMetrics,
   };
 }

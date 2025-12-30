@@ -8,7 +8,11 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "serve": "npx http-server . -p 8000 -o",
-    "dev": "npm run build && npm run serve"
+    "dev": "npm run build && npm run serve",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "repository": {
     "type": "git",
@@ -22,6 +26,8 @@
   },
   "homepage": "https://github.com/JavaFXpert/precog-checkers-opencode#readme",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@vitest/coverage-v8": "^4.0.16",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   }
 }

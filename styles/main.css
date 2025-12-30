@@ -306,6 +306,60 @@ body {
   animation: pulse-text 1.5s ease-in-out infinite;
 }
 
+/* Response Panel (Human talking back) */
+.response-panel {
+  background: linear-gradient(135deg, rgba(42, 26, 26, 0.6), rgba(32, 13, 13, 0.9));
+  border: 1px solid var(--color-piece-human);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  box-shadow: 0 0 15px rgba(255, 58, 58, 0.15);
+}
+
+.response-panel__title {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-piece-human);
+  letter-spacing: 0.15em;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid rgba(255, 58, 58, 0.3);
+}
+
+.response-panel__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.response-panel__input {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  background: rgba(10, 14, 23, 0.8);
+  border: 1px solid rgba(255, 58, 58, 0.3);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.response-panel__input:focus {
+  border-color: var(--color-piece-human);
+}
+
+.response-panel__input::placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.btn--small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.75rem;
+  align-self: flex-end;
+}
+
 /* History Panel */
 .history-panel {
   background: linear-gradient(135deg, rgba(26, 42, 74, 0.5), rgba(13, 21, 32, 0.8));

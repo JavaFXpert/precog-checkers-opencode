@@ -20,6 +20,8 @@ class PrecogCheckers {
         this._apiKey = null;
         // Track last human move for context
         this._lastHumanMove = null;
+        // Track conversation context for responses
+        this._lastAgathaThought = '';
         // Get canvas
         this._canvas = document.getElementById('game-canvas');
         if (!this._canvas) {
@@ -41,6 +43,8 @@ class PrecogCheckers {
         this._modalTitle = document.getElementById('modal-title');
         this._modalMessage = document.getElementById('modal-message');
         this._agathaThoughts = document.getElementById('agatha-thoughts');
+        this._humanResponseInput = document.getElementById('human-response');
+        this._sendResponseBtn = document.getElementById('send-response');
         // Check for API key in localStorage or prompt
         this._apiKey = localStorage.getItem('anthropic_api_key');
         // Setup event listeners
@@ -65,6 +69,14 @@ class PrecogCheckers {
         window.addEventListener('resize', this._handleResize.bind(this));
         // Keyboard
         document.addEventListener('keydown', this._handleKeyDown.bind(this));
+        // Human response to Agatha
+        this._sendResponseBtn.addEventListener('click', this._handleSendResponse.bind(this));
+        this._humanResponseInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this._handleSendResponse();
+            }
+        });
     }
     /**
      * Sets up game controller callbacks
@@ -311,6 +323,84 @@ class PrecogCheckers {
         if (textEl) {
             textEl.textContent = `"${thought}"`;
             textEl.classList.remove('thoughts-panel__text--thinking');
+        }
+        this._lastAgathaThought = thought;
+    }
+    /**
+     * Handles human response to Agatha
+     */
+    async _handleSendResponse() {
+        const message = this._humanResponseInput.value.trim();
+        if (!message)
+            return;
+        // Clear input
+        this._humanResponseInput.value = '';
+        // Show thinking
+        this._setAgathaThinking(true);
+        // Generate Agatha's response to the human's message
+        try {
+            const response = await this._generateAgathaReply(message);
+            this._displayAgathaThought(response);
+        }
+        catch (error) {
+            console.error('Error generating reply:', error);
+            this._displayAgathaThought("Your words ripple through time, but change nothing.");
+        }
+    }
+    /**
+     * Generates Agatha's reply to human's message
+     */
+    async _generateAgathaReply(humanMessage) {
+        if (!this._apiKey) {
+            // Local fallback responses
+            const responses = [
+                "Your words are as predictable as your moves.",
+                "I've already seen this conversation in a thousand futures.",
+                "Talk all you want. The outcome remains unchanged.",
+                "Interesting sentiment. It won't save your pieces.",
+                "Your defiance is... amusing. And futile.",
+                "I heard that same phrase in 47 alternate timelines.",
+                "Words cannot alter what I've already seen.",
+                "Such bravado. The visions show me your doubt beneath it.",
+            ];
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this._apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-haiku-20241022',
+                    max_tokens: 100,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `You are Agatha, a precognitive AI from Minority Report playing checkers. You're mysterious, confident, and can see the future.
+
+Your last statement was: "${this._lastAgathaThought}"
+
+The human opponent just said to you: "${humanMessage}"
+
+Respond in 1 SHORT sentence. Stay in character - be mysterious, slightly condescending, reference your visions/precognition. Include subtle trash talk.
+
+Respond with ONLY your reply, no quotes.`,
+                        },
+                    ],
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('API error');
+            }
+            const data = await response.json();
+            return data.content?.[0]?.text?.trim() || "The future remains... clouded by your insolence.";
+        }
+        catch (error) {
+            return "Your words echo through time, changing nothing.";
         }
     }
     /**

@@ -46,7 +46,7 @@ export async function generateAgathaThought(
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-20250414',
+        model: 'claude-3-5-haiku-20241022',
         max_tokens: 150,
         messages: [
           {

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Precog Checkers - Play against Agatha, an AI that sees your moves before you make them">
+  <title>Precog Checkers</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header__title">
+        <span class="header__icon">&#9823;</span>
+        PRECOG CHECKERS
+      </h1>
+      <div class="header__controls">
+        <button id="sound-toggle" class="btn btn--icon" aria-label="Toggle sound" title="Toggle sound">
+          <span class="sound-icon sound-icon--off">&#128264;</span>
+        </button>
+        <button id="new-game-btn" class="btn btn--primary">New Game</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Game Board Section -->
+      <section class="board-section">
+        <canvas id="game-canvas" class="game-canvas"></canvas>
+      </section>
+
+      <!-- Side Panel -->
+      <aside class="side-panel">
+        <!-- Score Display -->
+        <div class="score-panel">
+          <div class="score-row score-row--agatha">
+            <span class="score-label">AGATHA</span>
+            <div class="piece-count" id="agatha-pieces">
+              <span class="piece-dots"></span>
+              <span class="piece-number">12</span>
+            </div>
+          </div>
+          <div class="score-row score-row--human">
+            <span class="score-label">YOU</span>
+            <div class="piece-count" id="human-pieces">
+              <span class="piece-dots"></span>
+              <span class="piece-number">12</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agatha's Thoughts -->
+        <div class="thoughts-panel">
+          <h2 class="thoughts-panel__title">AGATHA'S VISION</h2>
+          <div class="thoughts-panel__content" id="agatha-thoughts">
+            <p class="thoughts-panel__text">I see all possible futures... Make your move, human.</p>
+          </div>
+        </div>
+
+        <!-- Move History -->
+        <div class="history-panel">
+          <h2 class="history-panel__title">MOVE HISTORY</h2>
+          <div class="history-panel__list" id="move-history">
+            <!-- Move entries will be added here dynamically -->
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <p class="status-bar__message" id="status-message">Your turn</p>
+    </footer>
+
+    <!-- Game Over Modal -->
+    <div class="modal" id="game-over-modal" hidden>
+      <div class="modal__backdrop"></div>
+      <div class="modal__content">
+        <h2 class="modal__title" id="modal-title">Game Over</h2>
+        <p class="modal__message" id="modal-message"></p>
+        <button class="btn btn--primary btn--large" id="modal-new-game">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>

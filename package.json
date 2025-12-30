@@ -1,0 +1,27 @@
+{
+  "name": "precog-checkers",
+  "version": "1.0.0",
+  "description": "Minority Report themed checkers game - Play against Agatha, an AI that sees your moves before you make them",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "npx http-server . -p 8000 -o",
+    "dev": "npm run build && npm run serve"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JavaFXpert/precog-checkers-opencode.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JavaFXpert/precog-checkers-opencode/issues"
+  },
+  "homepage": "https://github.com/JavaFXpert/precog-checkers-opencode#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

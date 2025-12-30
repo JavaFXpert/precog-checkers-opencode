@@ -245,3 +245,57 @@ export function evaluateKingSafety(
 
   return safetyScore;
 }
+
+/**
+ * Detailed position evaluation breakdown
+ * Returns component scores for material, position, and mobility
+ */
+export interface DetailedEvaluation {
+  totalScore: number;
+  materialScore: number;
+  positionalScore: number;
+  mobilityScore: number;
+  agathaMen: number;
+  agathaKings: number;
+  humanMen: number;
+  humanKings: number;
+}
+
+export function getDetailedEvaluation(
+  board: (Piece | null)[][],
+  weights: EvaluationWeights = DEFAULT_WEIGHTS
+): DetailedEvaluation {
+  const agathaPieces = getPlayerPieces(board, 'agatha');
+  const humanPieces = getPlayerPieces(board, 'human');
+  
+  // Count pieces by type
+  const agathaMen = agathaPieces.filter(p => p.type === 'man').length;
+  const agathaKings = agathaPieces.filter(p => p.type === 'king').length;
+  const humanMen = humanPieces.filter(p => p.type === 'man').length;
+  const humanKings = humanPieces.filter(p => p.type === 'king').length;
+  
+  // Material score (piece values)
+  const agathaMaterial = agathaMen * weights.pieceValue + agathaKings * weights.kingValue;
+  const humanMaterial = humanMen * weights.pieceValue + humanKings * weights.kingValue;
+  const materialScore = agathaMaterial - humanMaterial;
+  
+  // Mobility score
+  const agathaMoves = getAllValidMoves(board, 'agatha');
+  const humanMoves = getAllValidMoves(board, 'human');
+  const mobilityScore = (agathaMoves.length - humanMoves.length) * weights.mobilityBonus;
+  
+  // Positional score (everything else)
+  const totalScore = evaluateBoard(board, weights);
+  const positionalScore = totalScore - materialScore - mobilityScore;
+  
+  return {
+    totalScore,
+    materialScore,
+    positionalScore,
+    mobilityScore,
+    agathaMen,
+    agathaKings,
+    humanMen,
+    humanKings,
+  };
+}

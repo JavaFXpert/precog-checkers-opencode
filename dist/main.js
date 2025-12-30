@@ -7,6 +7,7 @@ import { GameController } from './game/game-controller.js';
 import { getPieceAt } from './game/board.js';
 import { Renderer } from './ui/renderer.js';
 import { getBestMove, getPredictedResponse, getNodesEvaluated } from './ai/minimax.js';
+import { getDetailedEvaluation } from './ai/evaluation.js';
 import { getAllValidMoves } from './game/rules.js';
 import { SoundManager } from './ui/sound.js';
 import { generateAgathaThought, generateAgathaReply, buildGameContext } from './ui/agatha-thoughts.js';
@@ -272,12 +273,30 @@ class PrecogCheckers {
         const availableMoves = getAllValidMoves(this._game.board, 'agatha').length;
         // Get AI move
         const move = getBestMove(this._game.board);
+        // Get detailed position evaluation
+        const detailedEval = getDetailedEvaluation(this._game.board);
         // Capture AI metrics right after the search completes
         const aiMetrics = {
             positionsEvaluated: getNodesEvaluated(),
             searchDepth: AI_SEARCH_DEPTH,
-            moveScore: 0, // We could calculate this with evaluateMove if needed
+            moveScore: detailedEval.totalScore,
             availableMoves: availableMoves,
+            humanPieces: {
+                men: detailedEval.humanMen,
+                kings: detailedEval.humanKings,
+                total: detailedEval.humanMen + detailedEval.humanKings,
+            },
+            agathaPieces: {
+                men: detailedEval.agathaMen,
+                kings: detailedEval.agathaKings,
+                total: detailedEval.agathaMen + detailedEval.agathaKings,
+            },
+            positionEval: {
+                totalScore: detailedEval.totalScore,
+                materialScore: detailedEval.materialScore,
+                positionalScore: detailedEval.positionalScore,
+                mobilityScore: detailedEval.mobilityScore,
+            },
         };
         if (!move) {
             console.error('AI could not find a move');

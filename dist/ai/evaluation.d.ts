@@ -27,4 +27,19 @@ export declare function isEndGame(board: (Piece | null)[][]): boolean;
  * Evaluates king safety (distance from opponent pieces)
  */
 export declare function evaluateKingSafety(board: (Piece | null)[][], player: Player): number;
+/**
+ * Detailed position evaluation breakdown
+ * Returns component scores for material, position, and mobility
+ */
+export interface DetailedEvaluation {
+    totalScore: number;
+    materialScore: number;
+    positionalScore: number;
+    mobilityScore: number;
+    agathaMen: number;
+    agathaKings: number;
+    humanMen: number;
+    humanKings: number;
+}
+export declare function getDetailedEvaluation(board: (Piece | null)[][], weights?: EvaluationWeights): DetailedEvaluation;
 //# sourceMappingURL=evaluation.d.ts.map

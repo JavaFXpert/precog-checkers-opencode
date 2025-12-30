@@ -7,6 +7,25 @@ import { Piece, Player, Move, Position, BOARD_SIZE } from '../types.js';
 import { positionToNotation, countPieces } from '../game/board.js';
 
 /**
+ * Piece counts for each player
+ */
+export interface PieceCounts {
+  men: number;
+  kings: number;
+  total: number;
+}
+
+/**
+ * Position evaluation breakdown
+ */
+export interface PositionEvaluation {
+  totalScore: number;          // Overall position score (positive = Agatha advantage)
+  materialScore: number;       // Score from piece values
+  positionalScore: number;     // Score from positioning (center, advancement, etc.)
+  mobilityScore: number;       // Score from available moves
+}
+
+/**
  * AI strategy metrics from minimax search
  */
 export interface AIMetrics {
@@ -14,6 +33,9 @@ export interface AIMetrics {
   searchDepth: number;
   moveScore: number;
   availableMoves: number;
+  humanPieces: PieceCounts;
+  agathaPieces: PieceCounts;
+  positionEval: PositionEvaluation;
 }
 
 /**
@@ -207,12 +229,22 @@ function buildGameStateMessage(context: GameContext): string {
   // Build AI metrics section if available
   let metricsSection = '';
   if (aiMetrics) {
+    const evalSign = (n: number) => n > 0 ? '+' : '';
     metricsSection = `
-[AI METRICS FOR THIS MOVE]
+[PIECE COUNTS]
+- Agatha: ${aiMetrics.agathaPieces.total} pieces (${aiMetrics.agathaPieces.men} men, ${aiMetrics.agathaPieces.kings} kings)
+- Human: ${aiMetrics.humanPieces.total} pieces (${aiMetrics.humanPieces.men} men, ${aiMetrics.humanPieces.kings} kings)
+
+[POSITION EVALUATION - positive favors Agatha]
+- Total score: ${evalSign(aiMetrics.positionEval.totalScore)}${aiMetrics.positionEval.totalScore}
+- Material score: ${evalSign(aiMetrics.positionEval.materialScore)}${aiMetrics.positionEval.materialScore} (piece values: men=100, kings=150)
+- Positional score: ${evalSign(aiMetrics.positionEval.positionalScore)}${aiMetrics.positionEval.positionalScore} (center control, advancement, defense)
+- Mobility score: ${evalSign(aiMetrics.positionEval.mobilityScore)}${aiMetrics.positionEval.mobilityScore} (available moves advantage)
+
+[SEARCH METRICS]
 - Positions evaluated: ${aiMetrics.positionsEvaluated.toLocaleString()}
-- Search depth: ${aiMetrics.searchDepth} moves ahead
-- Move score: ${aiMetrics.moveScore > 0 ? '+' : ''}${aiMetrics.moveScore}
-- Available moves considered: ${aiMetrics.availableMoves}`;
+- Search depth: ${aiMetrics.searchDepth} moves ahead (${aiMetrics.searchDepth / 2} turns each player)
+- Moves considered: ${aiMetrics.availableMoves}`;
   }
 
   return `[GAME UPDATE - Move #${moveNumber}]

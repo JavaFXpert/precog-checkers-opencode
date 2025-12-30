@@ -4,6 +4,23 @@
  */
 import { Piece, Move } from '../types.js';
 /**
+ * Piece counts for each player
+ */
+export interface PieceCounts {
+    men: number;
+    kings: number;
+    total: number;
+}
+/**
+ * Position evaluation breakdown
+ */
+export interface PositionEvaluation {
+    totalScore: number;
+    materialScore: number;
+    positionalScore: number;
+    mobilityScore: number;
+}
+/**
  * AI strategy metrics from minimax search
  */
 export interface AIMetrics {
@@ -11,6 +28,9 @@ export interface AIMetrics {
     searchDepth: number;
     moveScore: number;
     availableMoves: number;
+    humanPieces: PieceCounts;
+    agathaPieces: PieceCounts;
+    positionEval: PositionEvaluation;
 }
 /**
  * Game context for generating commentary

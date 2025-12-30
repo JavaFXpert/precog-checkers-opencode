@@ -140,12 +140,22 @@ function buildGameStateMessage(context) {
     // Build AI metrics section if available
     let metricsSection = '';
     if (aiMetrics) {
+        const evalSign = (n) => n > 0 ? '+' : '';
         metricsSection = `
-[AI METRICS FOR THIS MOVE]
+[PIECE COUNTS]
+- Agatha: ${aiMetrics.agathaPieces.total} pieces (${aiMetrics.agathaPieces.men} men, ${aiMetrics.agathaPieces.kings} kings)
+- Human: ${aiMetrics.humanPieces.total} pieces (${aiMetrics.humanPieces.men} men, ${aiMetrics.humanPieces.kings} kings)
+
+[POSITION EVALUATION - positive favors Agatha]
+- Total score: ${evalSign(aiMetrics.positionEval.totalScore)}${aiMetrics.positionEval.totalScore}
+- Material score: ${evalSign(aiMetrics.positionEval.materialScore)}${aiMetrics.positionEval.materialScore} (piece values: men=100, kings=150)
+- Positional score: ${evalSign(aiMetrics.positionEval.positionalScore)}${aiMetrics.positionEval.positionalScore} (center control, advancement, defense)
+- Mobility score: ${evalSign(aiMetrics.positionEval.mobilityScore)}${aiMetrics.positionEval.mobilityScore} (available moves advantage)
+
+[SEARCH METRICS]
 - Positions evaluated: ${aiMetrics.positionsEvaluated.toLocaleString()}
-- Search depth: ${aiMetrics.searchDepth} moves ahead
-- Move score: ${aiMetrics.moveScore > 0 ? '+' : ''}${aiMetrics.moveScore}
-- Available moves considered: ${aiMetrics.availableMoves}`;
+- Search depth: ${aiMetrics.searchDepth} moves ahead (${aiMetrics.searchDepth / 2} turns each player)
+- Moves considered: ${aiMetrics.availableMoves}`;
     }
     return `[GAME UPDATE - Move #${moveNumber}]
 Human moved: ${humanMoveFrom} to ${humanMoveTo}${humanCaptured ? ` (captured ${humanCaptureCount})` : ''}
